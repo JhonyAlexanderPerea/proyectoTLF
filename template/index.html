@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TLF — Validador de Patrones</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ── Variables ─────────────────────────────────── */
+:root {
+  --bg:      #0b0e14;
+  --surface: #12161f;
+  --card:    #181d28;
+  --border:  #252c3d;
+  --accent:  #4af0a0;
+  --accent2: #4ab3f0;
+  --warn:    #f04a6a;
+  --text:    #e2e8f0;
+  --muted:   #6b7a99;
+  --mono:    'Space Mono', monospace;
+  --sans:    'DM Sans', sans-serif;
+  --r:       10px;
+  --ok:      #22c55e;
+  --bad:     #ef4444;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;line-height:1.6}
+
+/* ── Header ──────────────────────────────────────── */
+header{
+  background:var(--surface);border-bottom:1px solid var(--border);
+  padding:0 2rem;position:sticky;top:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;height:60px;
+}
+.logo{font-family:var(--mono);font-size:.95rem;color:var(--accent);letter-spacing:.05em}
+.logo span{color:var(--muted)}
+.server-dot{
+  display:inline-block;width:8px;height:8px;border-radius:50%;
+  background:var(--muted);margin-right:.4rem;transition:background .3s;
+}
+.server-dot.online{background:var(--ok);box-shadow:0 0 6px var(--ok)}
+.server-dot.offline{background:var(--bad)}
+.server-label{font-size:.72rem;color:var(--muted);font-family:var(--mono)}
+.tab-nav{display:flex;gap:4px}
+.tab-btn{
+  font-family:var(--sans);font-size:.82rem;font-weight:500;
+  background:none;border:1px solid transparent;color:var(--muted);
+  padding:.35rem .9rem;border-radius:6px;cursor:pointer;transition:all .18s;
+}
+.tab-btn:hover{color:var(--text);border-color:var(--border)}
+.tab-btn.active{background:rgba(74,240,160,.1);border-color:var(--accent);color:var(--accent)}
+
+/* ── Main ───────────────────────────────────────── */
+main{max-width:1000px;margin:0 auto;padding:2.5rem 1.5rem 4rem}
+.tab-panel{display:none}
+.tab-panel.active{display:block;animation:fadeUp .3s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Typography helpers ─────────────────────────── */
+.sec-title{font-family:var(--mono);font-size:.72rem;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);margin-bottom:.5rem}
+.sec-heading{font-size:1.55rem;font-weight:600;margin-bottom:.4rem}
+.sec-sub{color:var(--muted);font-size:.9rem;margin-bottom:2rem}
+
+/* ── Card ───────────────────────────────────────── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:1.5rem;margin-bottom:1.5rem}
+
+/* ── Textarea ───────────────────────────────────── */
+textarea{
+  width:100%;background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);font-family:var(--mono);font-size:.82rem;
+  padding:1rem;resize:vertical;min-height:180px;outline:none;
+  transition:border-color .18s;line-height:1.7;
+}
+textarea:focus{border-color:var(--accent2)}
+textarea::placeholder{color:var(--muted)}
+
+/* ── Buttons ────────────────────────────────────── */
+.btn{
+  display:inline-flex;align-items:center;gap:.45rem;
+  font-family:var(--sans);font-size:.875rem;font-weight:600;
+  padding:.55rem 1.3rem;border-radius:7px;cursor:pointer;
+  border:none;transition:all .18s;letter-spacing:.02em;
+}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{background:var(--accent);color:#0b0e14}
+.btn-primary:hover:not(:disabled){filter:brightness(1.1);transform:translateY(-1px)}
+.btn-secondary{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.btn-secondary:hover:not(:disabled){color:var(--text);border-color:var(--muted)}
+.btn-row{display:flex;gap:.75rem;margin-top:1rem;flex-wrap:wrap;align-items:center}
+
+/* ── Spinner ────────────────────────────────────── */
+.spinner{
+  display:none;width:16px;height:16px;border:2px solid transparent;
+  border-top-color:currentColor;border-radius:50%;animation:spin .6s linear infinite;
+}
+.spinner.active{display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Results ────────────────────────────────────── */
+.results-grid{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+  gap:1rem;margin-top:1.5rem;
+}
+.result-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;padding:1rem 1.2rem;animation:fadeUp .25s ease;
+}
+.r-type{font-family:var(--mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.12em;color:var(--accent2);margin-bottom:.5rem}
+.r-count{font-size:.78rem;color:var(--muted);margin-bottom:.6rem}
+.r-items{display:flex;flex-direction:column;gap:.3rem}
+.r-item{
+  font-family:var(--mono);font-size:.8rem;
+  background:rgba(74,179,240,.06);border:1px solid rgba(74,179,240,.15);
+  border-radius:5px;padding:.25rem .6rem;color:var(--text);word-break:break-all;
+}
+.no-results{text-align:center;padding:2.5rem;color:var(--muted);font-size:.9rem;font-family:var(--mono)}
+
+/* ── Form ───────────────────────────────────────── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
+@media(max-width:620px){.form-grid{grid-template-columns:1fr}}
+.field-wrap{display:flex;flex-direction:column;gap:.4rem}
+.field-wrap.full{grid-column:1/-1}
+.field-label{
+  font-size:.78rem;font-weight:600;color:var(--muted);
+  letter-spacing:.04em;text-transform:uppercase;
+  display:flex;align-items:center;gap:.4rem;
+}
+.badge{
+  font-family:var(--mono);font-size:.6rem;padding:.1rem .35rem;border-radius:4px;
+  background:rgba(74,240,160,.1);color:var(--accent);border:1px solid rgba(74,240,160,.2);
+}
+.field-input{
+  background:var(--surface);border:1.5px solid var(--border);
+  border-radius:8px;color:var(--text);font-family:var(--sans);
+  font-size:.92rem;padding:.62rem .9rem;outline:none;
+  transition:border-color .15s,background .15s,box-shadow .15s;width:100%;
+}
+.field-input::placeholder{color:var(--muted);font-size:.85rem}
+.field-input:focus{border-color:var(--accent2)}
+.field-input.valid{border-color:var(--ok);background:rgba(34,197,94,.05);box-shadow:0 0 0 3px rgba(34,197,94,.1)}
+.field-input.invalid{border-color:var(--bad);background:rgba(239,68,68,.05);box-shadow:0 0 0 3px rgba(239,68,68,.1)}
+.field-msg{font-size:.74rem;min-height:1rem;transition:color .15s;display:flex;align-items:center;gap:.3rem}
+.field-msg.ok{color:var(--ok)}
+.field-msg.err{color:var(--bad)}
+
+/* ── Summary bar ────────────────────────────────── */
+.summary-bar{
+  margin-top:1.5rem;background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;padding:.9rem 1.2rem;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem;
+}
+.s-label{font-size:.82rem;color:var(--muted)}
+.progress-pills{display:flex;gap:.4rem;flex-wrap:wrap}
+.pill{
+  display:inline-flex;align-items:center;gap:.25rem;
+  font-size:.72rem;font-family:var(--mono);padding:.2rem .55rem;border-radius:20px;
+}
+.pill.ok{background:rgba(34,197,94,.12);color:var(--ok);border:1px solid rgba(34,197,94,.25)}
+.pill.err{background:rgba(239,68,68,.12);color:var(--bad);border:1px solid rgba(239,68,68,.25)}
+.pill.idle{background:rgba(107,122,153,.1);color:var(--muted);border:1px solid var(--border)}
+
+/* ── Reference panel ────────────────────────────── */
+.ref-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.75rem;margin-top:1rem}
+.ref-item{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.8rem 1rem}
+.ri-name{font-size:.8rem;font-weight:600;color:var(--accent2);margin-bottom:.25rem}
+.ri-er{
+  font-family:var(--mono);font-size:.72rem;color:var(--accent);
+  background:rgba(74,240,160,.06);border:1px solid rgba(74,240,160,.12);
+  border-radius:5px;padding:.2rem .5rem;margin-bottom:.3rem;word-break:break-all;
+}
+.ri-ex{font-size:.72rem;color:var(--muted)}
+.ri-ex span{color:var(--text)}
+.ri-states{margin-top:.35rem;font-size:.68rem;color:var(--border);font-family:var(--mono)}
+
+/* ── Toast ──────────────────────────────────────── */
+.toast{
+  position:fixed;bottom:1.5rem;right:1.5rem;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:8px;padding:.75rem 1.2rem;font-size:.82rem;
+  transform:translateY(80px);opacity:0;transition:all .3s;z-index:999;
+  max-width:320px;
+}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.toast-err{border-color:var(--bad);color:var(--bad)}
+.toast.toast-ok{border-color:var(--ok);color:var(--ok)}
+
+/* ── Sample btn ─────────────────────────────────── */
+.sample-btn{
+  font-size:.78rem;font-family:var(--mono);background:none;
+  border:1px solid var(--border);color:var(--muted);
+  padding:.25rem .7rem;border-radius:5px;cursor:pointer;transition:all .15s;
+}
+.sample-btn:hover{color:var(--accent);border-color:var(--accent)}
+
+/* ── Scrollbar ──────────────────────────────────── */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+footer{
+  text-align:center;padding:1.5rem;font-size:.75rem;
+  color:var(--muted);border-top:1px solid var(--border);font-family:var(--mono);
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══════════════════════════════════════════════════════ -->
+<header>
+  <div class="logo">TLF<span>::</span>PatternEngine</div>
+  <div style="display:flex;align-items:center;gap:1.5rem">
+    <div style="display:flex;align-items:center">
+      <span class="server-dot" id="server-dot"></span>
+      <span class="server-label" id="server-label">Conectando…</span>
+    </div>
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="busqueda">⌕ Búsqueda</button>
+      <button class="tab-btn" data-tab="formulario">✎ Formulario</button>
+      <button class="tab-btn" data-tab="referencia">◈ Autómatas</button>
+    </nav>
+  </div>
+</header>
+
+<!-- ═══ MAIN ══════════════════════════════════════════════════════════ -->
+<main>
+
+  <!-- TAB 1: BÚSQUEDA ─────────────────────────────────────────────── -->
+  <section id="tab-busqueda" class="tab-panel active">
+    <p class="sec-title">Módulo 01</p>
+    <h1 class="sec-heading">Extracción de Patrones en Texto</h1>
+    <p class="sec-sub">Pega o escribe cualquier texto. El servidor analizará cada token con sus autómatas y devolverá todas las coincidencias.</p>
+
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem">
+        <span style="font-size:.82rem;color:var(--muted)">Área de texto de entrada</span>
+        <button class="sample-btn" id="btn-sample">Cargar texto de ejemplo</button>
+      </div>
+      <textarea id="txt-input" placeholder="Pega aquí tu texto, documento o cadena de caracteres…"></textarea>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="btn-extraer">
+          <span class="spinner" id="sp-extraer"></span>
+          ⚡ Extraer patrones
+        </button>
+        <button class="btn btn-secondary" id="btn-limpiar">✕ Limpiar</button>
+      </div>
+    </div>
+
+    <div id="results-container"></div>
+  </section>
+
+  <!-- TAB 2: FORMULARIO ───────────────────────────────────────────── -->
+  <section id="tab-formulario" class="tab-panel">
+    <p class="sec-title">Módulo 02</p>
+    <h1 class="sec-heading">Validación en Tiempo Real</h1>
+    <p class="sec-sub">Cada campo es validado por el servidor (Flask + autómata) al dejar de escribir. El color indica aceptación o rechazo.</p>
+
+    <div class="card">
+      <div class="form-grid">
+
+        <div class="field-wrap">
+          <label class="field-label" for="f-nombre">Nombre <span class="badge">local</span></label>
+          <input class="field-input" id="f-nombre" type="text" placeholder="Ej. María García" data-tipo="nombre">
+          <span class="field-msg" id="msg-nombre"></span>
+        </div>
+
+        <div class="field-wrap">
+          <label class="field-label" for="f-correo">Correo Electrónico <span class="badge">autómata</span></label>
+          <input class="field-input" id="f-correo" type="text" placeholder="Ej. profe@u.edu.co" data-tipo="correo">
+          <span class="field-msg" id="msg-correo"></span>
+        </div>
+
+        <div class="field-wrap">
+          <label class="field-label" for="f-telefono">Teléfono <span class="badge">autómata</span></label>
+          <input class="field-input" id="f-telefono" type="text" placeholder="Ej. 310-1234567" data-tipo="telefono">
+          <span class="field-msg" id="msg-telefono"></span>
+        </div>
+
+        <div class="field-wrap">
+          <label class="field-label" for="f-fecha">Fecha <span class="badge">autómata</span></label>
+          <input class="field-input" id="f-fecha" type="text" placeholder="Ej. 25/12/2024" data-tipo="fecha">
+          <span class="field-msg" id="msg-fecha"></span>
+        </div>
+
+        <div class="field-wrap full">
+          <label class="field-label" for="f-url">URL <span class="badge">autómata</span></label>
+          <input class="field-input" id="f-url" type="text" placeholder="Ej. https://google.com" data-tipo="url">
+          <span class="field-msg" id="msg-url"></span>
+        </div>
+
+        <div class="field-wrap">
+          <label class="field-label" for="f-placa">Placa de Vehículo <span class="badge">autómata</span></label>
+          <input class="field-input" id="f-placa" type="text" placeholder="Ej. AAA-123" data-tipo="placa">
+          <span class="field-msg" id="msg-placa"></span>
+        </div>
+
+        <div class="field-wrap">
+          <label class="field-label" for="f-id">Identificador / Código <span class="badge">autómata</span></label>
+          <input class="field-input" id="f-id" type="text" placeholder="Ej. ID12345" data-tipo="identificador">
+          <span class="field-msg" id="msg-id"></span>
+        </div>
+
+        <div class="field-wrap">
+          <label class="field-label" for="f-ipv4">Dirección IPv4 <span class="badge">autómata</span></label>
+          <input class="field-input" id="f-ipv4" type="text" placeholder="Ej. 192.168.1.1" data-tipo="ipv4">
+          <span class="field-msg" id="msg-ipv4"></span>
+        </div>
+
+        <div class="field-wrap">
+          <label class="field-label" for="f-monto">Monto Monetario <span class="badge">autómata</span></label>
+          <input class="field-input" id="f-monto" type="text" placeholder="Ej. $ 1.500,00" data-tipo="monto">
+          <span class="field-msg" id="msg-monto"></span>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="summary-bar">
+      <span class="s-label">Estado de campos:</span>
+      <div class="progress-pills" id="pills-container"></div>
+    </div>
+  </section>
+
+  <!-- TAB 3: REFERENCIA ───────────────────────────────────────────── -->
+  <section id="tab-referencia" class="tab-panel">
+    <p class="sec-title">Módulo 03</p>
+    <h1 class="sec-heading">Referencia de Autómatas</h1>
+    <p class="sec-sub">Expresiones regulares, criterios de aceptación y trazas de estados. Datos cargados desde el servidor.</p>
+    <div class="ref-grid" id="ref-grid">
+      <div class="no-results">Cargando desde el servidor…</div>
+    </div>
+  </section>
+
+</main>
+
+<footer>TLF PatternEngine · Jean K. Méndez · Jhony A. Perea · Santiago Orozco · Flask + AFD manuales sin librería re</footer>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- ═══ JAVASCRIPT ════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+/* ── API helpers ──────────────────────────────────────────────────── */
+const API = {
+  base: '',  // mismo origen (Flask sirve el HTML)
+
+  async post(ruta, cuerpo) {
+    const res = await fetch(this.base + ruta, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cuerpo),
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  },
+
+  async get(ruta) {
+    const res = await fetch(this.base + ruta);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  },
+};
+
+/* ── Escape HTML ─────────────────────────────────────────────────── */
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ── Toast ───────────────────────────────────────────────────────── */
+let toastTimer;
+function showToast(msg, tipo = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast toast-${tipo} show`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+/* ── Health check ────────────────────────────────────────────────── */
+async function checkHealth() {
+  const dot   = document.getElementById('server-dot');
+  const label = document.getElementById('server-label');
+  try {
+    await API.get('/api/health');
+    dot.className   = 'server-dot online';
+    label.textContent = 'Servidor activo';
+  } catch {
+    dot.className   = 'server-dot offline';
+    label.textContent = 'Sin conexión';
+  }
+}
+checkHealth();
+setInterval(checkHealth, 30000);
+
+/* ── Tabs ────────────────────────────────────────────────────────── */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    if (btn.dataset.tab === 'referencia') cargarReferencia();
+  });
+});
+
+/* ════════════════════════════════════════════════════════════════════
+   MÓDULO 1 — BÚSQUEDA
+   ════════════════════════════════════════════════════════════════════ */
+
+const LABELS = {
+  correos:        'Correos Electrónicos',
+  telefonos:      'Números Telefónicos',
+  fechas:         'Fechas',
+  identificadores:'Identificadores / Códigos',
+  urls:           'Direcciones URL',
+  placas:         'Placas de Vehículos',
+  ips:            'Direcciones IPv4',
+  montos:         'Montos Monetarios',
+  etiquetas:      'Etiquetas HTML/XML',
+};
+
+document.getElementById('btn-sample').addEventListener('click', () => {
+  document.getElementById('txt-input').value =
+`Hola, te comparto mis datos de contacto:
+
+Correo: jean.mendez@unicauca.edu.co
+Teléfono: 310-1234567
+Fecha de nacimiento: 15/08/1998
+Placa de mi carro: ABC-123
+Código de estudiante: EST98765
+
+Puedes visitar nuestra web en https://www.unicauca.edu.co
+También en http://portal.edu.co/inicio
+
+El servidor tiene IP 192.168.0.1 y el router es 10.0.0.1
+
+El pago total fue de $1.250.000,00 y el IVA es de $237.500,00
+
+En el HTML usamos etiquetas como <div>, </div>, <span> y </span>`;
+});
+
+document.getElementById('btn-limpiar').addEventListener('click', () => {
+  document.getElementById('txt-input').value = '';
+  document.getElementById('results-container').innerHTML = '';
+});
+
+document.getElementById('btn-extraer').addEventListener('click', async () => {
+  const texto = document.getElementById('txt-input').value;
+  const container = document.getElementById('results-container');
+  const spinner   = document.getElementById('sp-extraer');
+
+  if (!texto.trim()) {
+    showToast('Ingresa texto para analizar', 'err');
+    return;
+  }
+
+  spinner.classList.add('active');
+  container.innerHTML = '';
+
+  try {
+    const data = await API.post('/api/extraer', { texto });
+    const { patrones, total } = data;
+
+    if (total === 0) {
+      container.innerHTML = '<p class="no-results">No se encontraron patrones reconocibles.</p>';
+      return;
+    }
+
+    const grid = document.createElement('div');
+    grid.className = 'results-grid';
+
+    for (const [clave, items] of Object.entries(patrones)) {
+      const card = document.createElement('div');
+      card.className = 'result-card';
+      card.innerHTML = `
+        <div class="r-type">${LABELS[clave] || clave}</div>
+        <div class="r-count">${items.length} coincidencia(s)</div>
+        <div class="r-items">
+          ${items.length
+            ? items.map(it => `<div class="r-item">${esc(it)}</div>`).join('')
+            : '<div style="font-size:.75rem;color:var(--muted);font-style:italic">Sin coincidencias</div>'}
+        </div>`;
+      grid.appendChild(card);
+    }
+    container.appendChild(grid);
+    showToast(`${total} patrón(es) encontrado(s)`, 'ok');
+
+  } catch (err) {
+    showToast('Error al conectar con el servidor', 'err');
+    container.innerHTML = '<p class="no-results">Error de conexión con el servidor.</p>';
+  } finally {
+    spinner.classList.remove('active');
+  }
+});
+
+/* ════════════════════════════════════════════════════════════════════
+   MÓDULO 2 — FORMULARIO CON VALIDACIÓN VÍA API
+   ════════════════════════════════════════════════════════════════════ */
+
+const CAMPOS = [
+  { id: 'f-nombre',   tipo: 'nombre',        msg: 'msg-nombre',   pill: 'Nombre'    },
+  { id: 'f-correo',   tipo: 'correo',        msg: 'msg-correo',   pill: 'Correo'    },
+  { id: 'f-telefono', tipo: 'telefono',      msg: 'msg-telefono', pill: 'Teléfono'  },
+  { id: 'f-fecha',    tipo: 'fecha',         msg: 'msg-fecha',    pill: 'Fecha'     },
+  { id: 'f-url',      tipo: 'url',           msg: 'msg-url',      pill: 'URL'       },
+  { id: 'f-placa',    tipo: 'placa',         msg: 'msg-placa',    pill: 'Placa'     },
+  { id: 'f-id',       tipo: 'identificador', msg: 'msg-id',       pill: 'ID'        },
+  { id: 'f-ipv4',     tipo: 'ipv4',          msg: 'msg-ipv4',     pill: 'IPv4'      },
+  { id: 'f-monto',    tipo: 'monto',         msg: 'msg-monto',    pill: 'Monto'     },
+];
+
+// Para "nombre" hacemos validación local (sin autómata de servidor)
+function validarNombreLocal(valor) {
+  if (!valor) return { valido: false, mensaje: 'Campo vacío' };
+  if (valor.trim().length < 2) return { valido: false, mensaje: 'Mínimo 2 caracteres' };
+  return { valido: true, mensaje: 'Nombre registrado' };
+}
+
+/* Inicializar pills */
+const pillsContainer = document.getElementById('pills-container');
+CAMPOS.forEach(cfg => {
+  const pill = document.createElement('span');
+  pill.className = 'pill idle';
+  pill.id = 'pill-' + cfg.id;
+  pill.textContent = cfg.pill;
+  pillsContainer.appendChild(pill);
+});
+
+function setPill(fieldId, estado) {
+  const p = document.getElementById('pill-' + fieldId);
+  if (p) p.className = 'pill ' + estado;
+}
+
+/* Debounce para no llamar al servidor en cada tecla */
+function debounce(fn, ms) {
+  let timer;
+  return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), ms); };
+}
+
+/* Aplica resultado de validación al campo */
+function aplicarResultado(fieldId, msgId, resultado) {
+  const input  = document.getElementById(fieldId);
+  const msgEl  = document.getElementById(msgId);
+  const { valido, mensaje } = resultado;
+
+  input.classList.toggle('valid',   valido);
+  input.classList.toggle('invalid', !valido);
+  msgEl.textContent = (valido ? '✓ ' : '✕ ') + mensaje;
+  msgEl.className   = 'field-msg ' + (valido ? 'ok' : 'err');
+  setPill(fieldId, valido ? 'ok' : 'err');
+}
+
+function limpiarCampo(fieldId, msgId) {
+  const input = document.getElementById(fieldId);
+  const msgEl = document.getElementById(msgId);
+  input.classList.remove('valid', 'invalid');
+  msgEl.textContent = '';
+  msgEl.className   = 'field-msg';
+  setPill(fieldId, 'idle');
+}
+
+CAMPOS.forEach(cfg => {
+  const input = document.getElementById(cfg.id);
+  if (!input) return;
+
+  const validar = debounce(async (valor) => {
+    if (!valor) { limpiarCampo(cfg.id, cfg.msg); return; }
+
+    // Nombre: validación local
+    if (cfg.tipo === 'nombre') {
+      aplicarResultado(cfg.id, cfg.msg, validarNombreLocal(valor));
+      return;
+    }
+
+    // Resto: llamada al servidor
+    try {
+      const resultado = await API.post('/api/validar', { tipo: cfg.tipo, valor });
+      aplicarResultado(cfg.id, cfg.msg, resultado);
+    } catch {
+      const msgEl = document.getElementById(cfg.msg);
+      msgEl.textContent = '⚠ Sin conexión al servidor';
+      msgEl.className   = 'field-msg err';
+    }
+  }, 350);  // 350 ms de debounce
+
+  input.addEventListener('input', e => validar(e.target.value));
+});
+
+/* ════════════════════════════════════════════════════════════════════
+   MÓDULO 3 — REFERENCIA (carga desde /api/referencia)
+   ════════════════════════════════════════════════════════════════════ */
+
+let referenciasCargadas = false;
+
+async function cargarReferencia() {
+  if (referenciasCargadas) return;
+  const grid = document.getElementById('ref-grid');
+
+  try {
+    const datos = await API.get('/api/referencia');
+    grid.innerHTML = '';
+    datos.forEach(a => {
+      const el = document.createElement('div');
+      el.className = 'ref-item';
+      el.innerHTML = `
+        <div class="ri-name">${esc(a.nombre)}</div>
+        <div class="ri-er">${esc(a.er)}</div>
+        <div class="ri-ex">✓ <span>${esc(a.valido)}</span></div>
+        <div class="ri-ex" style="color:var(--bad)">✕ <span style="color:var(--muted)">${esc(a.invalido)}</span></div>
+        <div class="ri-states">${esc(a.estados)}</div>`;
+      grid.appendChild(el);
+    });
+    referenciasCargadas = true;
+  } catch {
+    grid.innerHTML = '<div class="no-results">Error al cargar desde el servidor.</div>';
+  }
+}
+</script>
+</body>
+</html>
