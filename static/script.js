@@ -254,6 +254,29 @@ CAMPOS.forEach(cfg => {
   input.addEventListener('input', e => validar(e.target.value));
 });
 
+document.getElementById('btn-sample-form').addEventListener('click', () => {
+  const ejemplos = {
+    'f-nombre': 'María García López',
+    'f-correo': 'maria.garcia@uniquindio.edu.co',
+    'f-telefono': '310-1234567',
+    'f-fecha': '25/12/2024',
+    'f-url': 'https://www.uniquindio.edu.co',
+    'f-placa': 'ABC-123',
+    'f-id': 'EST98765',
+    'f-ipv4': '192.168.1.1',
+    'f-monto': '$ 1.500,00',
+  };
+
+  for (const [id, valor] of Object.entries(ejemplos)) {
+    const input = document.getElementById(id);
+    if (input) {
+      input.value = valor;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  }
+  showToast('Formulario de ejemplo cargado', 'ok');
+});
+
 /* ════════════════════════════════════════════════════════════════════
    MÓDULO 3 — REFERENCIA (carga desde /api/referencia)
    ════════════════════════════════════════════════════════════════════ */
