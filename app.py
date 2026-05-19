@@ -106,7 +106,7 @@ REFERENCIA = [
 @app.route('/')
 def index():
     """Sirve la página principal."""
-    return send_from_directory('templates', 'index.html')
+    return render_template('index.html')
 
 
 # ── POST /api/validar ───────────────────────────────────────────────────

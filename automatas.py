@@ -633,17 +633,13 @@ def extraer_patrones(texto: str) -> dict:
     """
     Escanea un texto libre y extrae todas las coincidencias de cada patrón.
     Los autómatas son los que deciden si cada token es válido.
-    El módulo 're' se usa ÚNICAMENTE para dividir el texto en tokens.
+    El módulo 're' se usa ÚNICAMENTE para tokenizar y extraer patrones complejos.
     """
     if not texto or not texto.strip():
         return {k: [] for k in [
             "correos", "telefonos", "fechas", "identificadores",
             "urls", "placas", "ips", "montos", "etiquetas"
         ]}
-
-    # Dividir en tokens por espacios/saltos/comas/punto y coma
-    tokens_raw = _re.split(r'[\s,;\n\r\t]+', texto)
-    tokens = [t.strip() for t in tokens_raw if t.strip()]
 
     encontrados = {
         "correos":        [],
@@ -656,6 +652,20 @@ def extraer_patrones(texto: str) -> dict:
         "montos":         [],
         "etiquetas":      [],
     }
+
+    # PASO 1: Extraer montos ANTES de dividir (porque contienen comas)
+    # Patrón: $ (opcionalmente seguido de espacio) + dígitos + (puntos + 3 dígitos)* + coma + dígitos
+    montos_pattern = r'\$\s*\d+(?:\.\d{3})*,\d+'
+    for monto in _re.findall(montos_pattern, texto):
+        if validar_monto(monto)["valido"]:
+            encontrados["montos"].append(monto)
+    
+    # Remover los montos del texto para no procesarlos de nuevo
+    texto_limpio = _re.sub(montos_pattern, '', texto)
+
+    # PASO 2: Dividir el texto restante en tokens por espacios/saltos/comas/punto y coma
+    tokens_raw = _re.split(r'[\s,;\n\r\t]+', texto_limpio)
+    tokens = [t.strip() for t in tokens_raw if t.strip()]
 
     for token in tokens:
         # Correo: debe contener @
@@ -690,11 +700,6 @@ def extraer_patrones(texto: str) -> dict:
         if token.count('.') == 3 and token[0].isdigit():
             if validar_ipv4(token)["valido"]:
                 encontrados["ips"].append(token)
-
-        # Monto: empieza con $
-        if token.startswith('$'):
-            if validar_monto(token)["valido"]:
-                encontrados["montos"].append(token)
 
         # HTML tag: empieza con <
         if token.startswith('<'):

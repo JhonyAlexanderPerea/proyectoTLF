@@ -9,13 +9,17 @@
 ## Estructura del proyecto
 
 ```
-proyectoTLF/
+tlf_project/
 ├── app.py           # Servidor Flask — rutas y API REST
-├── automatas.py     # 9 AFD implementados manualmente
+├── automatas.py     # 9 AFD implementados manualmente (sin librería re)
 ├── requirements.txt # Dependencias Python
+├── Procfile         # Comando de arranque para Render/Gunicorn
+├── render.yaml      # Configuración opcional para despliegue en Render
 ├── templates/
 │   └── index.html   # Interfaz web (consume la API)
-└── static/          # Archivos estáticos (vacío por ahora)
+└── static/
+  ├── styles.css   # Estilos separados
+  └── script.js    # Lógica del frontend separada
 ```
 
 ---
@@ -40,6 +44,19 @@ python app.py
 ```
 
 Abre `http://localhost:5000` en tu navegador.
+
+---
+
+## Despliegue en Render
+
+1. Sube el proyecto a GitHub.
+2. Crea un nuevo `Web Service` en Render.
+3. Conecta el repositorio.
+4. Usa la configuración incluida en `render.yaml`, o define:
+  - Build command: `pip install -r requirements.txt`
+  - Start command: `gunicorn app:app`
+
+Render leerá `PORT` automáticamente, y `app.py` ya está preparado para usarlo.
 
 ---
 

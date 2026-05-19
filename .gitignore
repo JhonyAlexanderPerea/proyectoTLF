@@ -1,0 +1,30 @@
+# Entorno virtual
+venv/
+env/
+.venv/
+__pycache__/
+
+# Caché de Python
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+.env
+
+# Flask
+instance/
+.webassets-cache
