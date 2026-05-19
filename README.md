@@ -9,9 +9,9 @@
 ## Estructura del proyecto
 
 ```
-tlf_project/
+proyectoTLF/
 ├── app.py           # Servidor Flask — rutas y API REST
-├── automatas.py     # 9 AFD implementados manualmente (sin librería re)
+├── automatas.py     # 9 AFD implementados manualmente
 ├── requirements.txt # Dependencias Python
 ├── templates/
 │   └── index.html   # Interfaz web (consume la API)
