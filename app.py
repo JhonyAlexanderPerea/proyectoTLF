@@ -28,7 +28,7 @@ from automatas import VALIDADORES, extraer_patrones
 app = Flask(
     __name__,
     static_folder='static',
-    template_folder='templates'
+    template_folder='template'
 )
 
 # ── Datos de referencia de autómatas (para el panel /api/referencia) ────
