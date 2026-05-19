@@ -474,16 +474,24 @@ textarea::placeholder {
 /* ── Reference panel ────────────────────────────── */
 .ref-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
   margin-top: 1rem;
 }
+
 
 .ref-item {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.8rem 1rem;
+  border-radius: 10px;
+  padding: 1rem;
+  min-height: 220px;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+
+  overflow: hidden;
 }
 
 .ri-name {
@@ -510,15 +518,40 @@ textarea::placeholder {
   color: var(--muted);
 }
 
-.ri-ex span {
-  color: var(--text);
+.ri-er {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+
+  color: #7fffb8;
+
+  background: rgba(74, 240, 160, 0.08);
+  border: 1px solid rgba(74, 240, 160, 0.2);
+
+  border-radius: 5px;
+  padding: 0.35rem 0.55rem;
+  margin-bottom: 0.45rem;
+
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+
+  line-height: 1.45;
 }
 
 .ri-states {
-  margin-top: 0.35rem;
-  font-size: 0.68rem;
-  color: var(--border);
+  margin-top: auto;
+
+  font-size: 0.72rem;
+  line-height: 1.5;
+
+  color: #94a3b8; /* más visible */
   font-family: var(--mono);
+
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+
+  opacity: 0.9;
 }
 
 /* ── Toast ──────────────────────────────────────── */
