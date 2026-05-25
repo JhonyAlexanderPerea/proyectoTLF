@@ -196,6 +196,56 @@ textarea::placeholder {
   color: var(--muted);
 }
 
+/* ── Drop Zone ──────────────────────────────────── */
+.drop-zone {
+  width: 100%;
+  border: 2px dashed var(--border);
+  border-radius: 8px;
+  padding: 2rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: rgba(74, 243, 160, 0.03);
+}
+
+.drop-zone:hover {
+  border-color: var(--accent);
+  background: rgba(74, 243, 160, 0.08);
+}
+
+.drop-zone.dragover {
+  border-color: var(--accent);
+  background: rgba(74, 243, 160, 0.15);
+  transform: scale(1.02);
+}
+
+.drop-content {
+  text-align: center;
+  pointer-events: none;
+}
+
+.drop-zone.loading .drop-content {
+  opacity: 0.5;
+}
+
+.drop-zone.loading::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--accent);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* ── Buttons ────────────────────────────────────── */
 .btn {
   display: inline-flex;

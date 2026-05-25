@@ -39,6 +39,14 @@
           <span style="font-size:.82rem;color:var(--muted)">Área de texto de entrada</span>
           <button class="sample-btn" id="btn-sample">Cargar texto de ejemplo</button>
         </div>
+        <div id="drop-zone" class="drop-zone">
+          <div class="drop-content">
+            <div style="font-size:1.5rem;margin-bottom:.5rem">📄</div>
+            <p style="font-weight:500;margin:0 0 .25rem 0">Arrastra archivos aquí</p>
+            <p style="font-size:.85rem;color:var(--muted);margin:0">PDF o DOCX</p>
+          </div>
+          <input type="file" id="file-input" accept=".pdf,.docx" style="display:none">
+        </div>
         <textarea id="txt-input" placeholder="Pega aquí tu texto, documento o cadena de caracteres…"></textarea>
         <div class="btn-row">
           <button class="btn btn-primary" id="btn-extraer">

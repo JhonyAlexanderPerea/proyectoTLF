@@ -21,6 +21,9 @@ Autores: Jean K. Méndez · Jhony A. Perea · Santiago Orozco
 
 from flask import Flask, request, jsonify, render_template, send_from_directory
 import os
+from werkzeug.utils import secure_filename
+import pdfplumber
+from docx import Document
 
 from automatas import VALIDADORES, extraer_patrones
 
@@ -30,7 +33,12 @@ app = Flask(
     static_folder='static',
     template_folder='template'
 )
-
+# ── Configuración para carga de archivos ────────────────────────────
+CARPETA_UPLOADS = os.path.join(os.path.dirname(__file__), 'uploads')
+os.makedirs(CARPETA_UPLOADS, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = CARPETA_UPLOADS
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB max
+EXTENSIONES_PERMITIDAS = {'pdf', 'docx'}
 # ── Datos de referencia de autómatas (para el panel /api/referencia) ────
 REFERENCIA = [
     {
@@ -98,6 +106,34 @@ REFERENCIA = [
     },
 ]
 
+
+# ── Funciones auxiliares para procesar archivos ──────────────────────
+def extensión_permitida(filename: str) -> bool:
+    """Valida que la extensión del archivo sea permitida."""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in EXTENSIONES_PERMITIDAS
+
+def extraer_texto_pdf(ruta_archivo: str) -> str:
+    """Extrae texto de un archivo PDF."""
+    texto = ""
+    try:
+        with pdfplumber.open(ruta_archivo) as pdf:
+            for pagina in pdf.pages:
+                texto += pagina.extract_text() or ""
+                texto += "\n"
+    except Exception as e:
+        return f"Error al procesar PDF: {str(e)}"
+    return texto
+
+def extraer_texto_docx(ruta_archivo: str) -> str:
+    """Extrae texto de un archivo DOCX."""
+    texto = ""
+    try:
+        doc = Document(ruta_archivo)
+        for párrafo in doc.paragraphs:
+            texto += párrafo.text + "\n"
+    except Exception as e:
+        return f"Error al procesar DOCX: {str(e)}"
+    return texto
 
 # ════════════════════════════════════════════════════════════════════════
 # RUTAS
@@ -182,6 +218,74 @@ def api_referencia():
 def api_health():
     """Endpoint de salud para verificar que el servidor está activo."""
     return jsonify({"estado": "activo", "version": "1.0.0"})
+
+
+# ── POST /api/procesar-archivo ──────────────────────────────────────────
+@app.route('/api/procesar-archivo', methods=['POST'])
+def api_procesar_archivo():
+    """
+    Procesa un archivo PDF o DOCX y extrae los patrones.
+
+    Form-Data:
+        archivo: (file) PDF o DOCX
+
+    Respuesta:
+        {
+          "archivo": "documento.pdf",
+          "patrones": { "correos": [...], "telefonos": [...] },
+          "total": N
+        }
+    """
+    if 'archivo' not in request.files:
+        return jsonify({"error": "No se envió archivo"}), 400
+
+    archivo = request.files['archivo']
+    
+    if archivo.filename == '':
+        return jsonify({"error": "Archivo sin nombre"}), 400
+
+    if not extensión_permitida(archivo.filename):
+        return jsonify({
+            "error": f"Tipo de archivo no permitido. Solo se aceptan: {', '.join(EXTENSIONES_PERMITIDAS)}"
+        }), 400
+
+    try:
+        # Guardar archivo temporalmente
+        nombre_seguro = secure_filename(archivo.filename)
+        ruta_archivo = os.path.join(app.config['UPLOAD_FOLDER'], nombre_seguro)
+        archivo.save(ruta_archivo)
+
+        # Extraer texto según el tipo de archivo
+        ext = nombre_seguro.rsplit('.', 1)[1].lower()
+        if ext == 'pdf':
+            texto = extraer_texto_pdf(ruta_archivo)
+        elif ext == 'docx':
+            texto = extraer_texto_docx(ruta_archivo)
+        else:
+            return jsonify({"error": "Tipo de archivo no soportado"}), 400
+
+        # Verificar si hubo error en la extracción
+        if texto.startswith("Error al procesar"):
+            return jsonify({"error": texto}), 500
+
+        # Eliminar archivo temporal
+        os.remove(ruta_archivo)
+
+        # Extraer patrones del texto
+        resultado = extraer_patrones(texto)
+        total = sum(len(v) for v in resultado.values())
+
+        return jsonify({
+            "archivo": nombre_seguro,
+            "patrones": resultado,
+            "total": total
+        })
+
+    except Exception as e:
+        # Limpiar en caso de error
+        if os.path.exists(ruta_archivo):
+            os.remove(ruta_archivo)
+        return jsonify({"error": f"Error al procesar archivo: {str(e)}"}), 500
 
 
 # ════════════════════════════════════════════════════════════════════════

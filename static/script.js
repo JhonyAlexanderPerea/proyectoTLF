@@ -155,6 +155,104 @@ document.getElementById('btn-extraer').addEventListener('click', async () => {
   }
 });
 
+/* ── Drag and Drop para archivos ──────────────────────────────────── */
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+dropZone.addEventListener('click', () => fileInput.click());
+
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
+  dropZone.addEventListener(evt, e => e.preventDefault());
+  document.body.addEventListener(evt, e => e.preventDefault());
+});
+
+dropZone.addEventListener('dragenter', () => dropZone.classList.add('dragover'));
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('dragover', () => dropZone.classList.add('dragover'));
+
+async function procesarArchivo(archivo) {
+  const container = document.getElementById('results-container');
+  
+  // Validar tipo de archivo
+  const ext = archivo.name.split('.').pop().toLowerCase();
+  if (!['pdf', 'docx'].includes(ext)) {
+    showToast('Solo se permiten archivos PDF o DOCX', 'err');
+    return;
+  }
+
+  // Validar tamaño (máx 16 MB)
+  if (archivo.size > 16 * 1024 * 1024) {
+    showToast('El archivo es demasiado grande (máx 16 MB)', 'err');
+    return;
+  }
+
+  dropZone.classList.add('loading');
+  container.innerHTML = '';
+
+  try {
+    const formData = new FormData();
+    formData.append('archivo', archivo);
+
+    const res = await fetch('/api/procesar-archivo', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || 'Error desconocido');
+    }
+
+    const data = await res.json();
+    const { archivo: nombre, patrones, total } = data;
+
+    if (total === 0) {
+      container.innerHTML = '<p class="no-results">No se encontraron patrones en el archivo.</p>';
+      showToast(`${nombre}: sin patrones encontrados`, 'ok');
+      return;
+    }
+
+    const grid = document.createElement('div');
+    grid.className = 'results-grid';
+
+    for (const [clave, items] of Object.entries(patrones)) {
+      const card = document.createElement('div');
+      card.className = 'result-card';
+      card.innerHTML = `
+        <div class="r-type">${LABELS[clave] || clave}</div>
+        <div class="r-count">${items.length} coincidencia(s)</div>
+        <div class="r-items">
+          ${items.length
+            ? items.map(it => `<div class="r-item">${esc(it)}</div>`).join('')
+            : '<div style="font-size:.75rem;color:var(--muted);font-style:italic">Sin coincidencias</div>'}
+        </div>`;
+      grid.appendChild(card);
+    }
+    container.appendChild(grid);
+    showToast(`${nombre}: ${total} patrón(es) encontrado(s)`, 'ok');
+
+  } catch (err) {
+    showToast(`Error: ${err.message}`, 'err');
+    container.innerHTML = '<p class="no-results">Error al procesar el archivo.</p>';
+  } finally {
+    dropZone.classList.remove('loading', 'dragover');
+  }
+}
+
+dropZone.addEventListener('drop', e => {
+  dropZone.classList.remove('dragover');
+  const files = e.dataTransfer.files;
+  if (files.length > 0) {
+    procesarArchivo(files[0]);
+  }
+});
+
+fileInput.addEventListener('change', e => {
+  if (e.target.files.length > 0) {
+    procesarArchivo(e.target.files[0]);
+  }
+});
+
 /* ════════════════════════════════════════════════════════════════════
    MÓDULO 2 — FORMULARIO CON VALIDACIÓN VÍA API
    ════════════════════════════════════════════════════════════════════ */
