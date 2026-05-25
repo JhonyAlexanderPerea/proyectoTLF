@@ -42,10 +42,10 @@ REFERENCIA = [
     },
     {
         "nombre":  "Número Telefónico",
-        "er":      "3 N N ('-'|' ')? N⁷",
+        "er":      "3 D D '-' D⁷",
         "valido":  "310-1234567",
-        "invalido":"310-ABC45, 12345",
-        "estados": "q0→q1(3)→q1(dígitos + sep)→aceptado(10 dígitos)",
+        "invalido":"310-123456, 31-1234567, 310 1234567",
+        "estados": "q0→q1(3)→q2(D)→q3(D)→q4(-)→q5-q10(7 dígitos)*",
     },
     {
         "nombre":  "Fecha DD/MM/AAAA",

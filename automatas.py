@@ -143,40 +143,38 @@ def validar_correo(cadena: str) -> dict:
 
 def validar_telefono(cadena: str) -> dict:
     """
-    Valida un número telefónico colombiano (10 dígitos, inicia con 3).
+    Valida un número telefónico colombiano con formato exacto: 3DD-DDDDDDD
 
-    Transiciones (contando dígitos):
-        q0  --('3')--> q1   (digitos=1)
-        q1  --(D)-->   q1   (acumula dígitos)
-        q1  --('-'|' ')--> q1  (separador único, solo tras 3 dígitos)
-    Estado de aceptación: 10 dígitos totales contados.
+    Donde D = dígito (0-9)
+    Transiciones (AFD):
+        q0  --('3')--> q1        (primer dígito es 3)
+        q1  --(D)--->  q2        (segundo dígito)
+        q2  --(D)--->  q3        (tercer dígito)
+        q3  --('-')--> q4        (guion obligatorio)
+        q4  --(D)--->  q5-q10    (7 dígitos finales)
+    Estado de aceptación: q10 (después de 10 dígitos y guion en posición correcta)
     """
     if not cadena:
         return _err("Campo vacío")
 
-    SEPARADORES = {'-', ' '}
-    contador_digitos = 0
-    separador_usado = False
+    # Formato exacto: 3DD-DDDDDDD (11 caracteres totales)
+    if len(cadena) != 11:
+        return _err(f"Formato incorrecto: debe tener exactamente 11 caracteres (3DD-DDDDDDD), tiene {len(cadena)}")
 
-    for i, c in enumerate(cadena):
-        if _es_digito(c):
-            contador_digitos += 1
-            if contador_digitos == 1 and c != '3':
-                return _err("El número debe iniciar con 3 (telefonía móvil colombiana)")
-            if contador_digitos > 10:
-                return _err("El número tiene más de 10 dígitos")
-        elif c in SEPARADORES:
-            if separador_usado:
-                return _err("Solo se permite un separador")
-            if contador_digitos != 3:
-                return _err("El separador debe ir después del prefijo de 3 dígitos")
-            separador_usado = True
-        else:
-            return _err(f"Carácter no permitido: '{c}'")
+    # Verificar estructura
+    if cadena[0] != '3':
+        return _err("Debe comenzar con 3 (telefonía móvil colombiana)")
 
-    if contador_digitos < 10:
-        return _err(f"Número incompleto: {contador_digitos}/10 dígitos")
-    return _ok("Número telefónico válido")
+    if cadena[3] != '-':
+        return _err("El guion debe estar en la posición 4 (formato: 3DD-DDDDDDD)")
+
+    # Verificar dígitos en posiciones correctas
+    posiciones_digitos = [0, 1, 2, 4, 5, 6, 7, 8, 9, 10]  # todas menos la del guion (índice 3)
+    for pos in posiciones_digitos:
+        if not _es_digito(cadena[pos]):
+            return _err(f"Posición {pos+1}: se esperaba un dígito, se encontró '{cadena[pos]}'")
+
+    return _ok("Número telefónico válido (formato: 3DD-DDDDDDD)")
 
 
 # ══════════════════════════════════════════════════════════════════════════
