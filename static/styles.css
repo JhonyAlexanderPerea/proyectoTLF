@@ -246,6 +246,37 @@ textarea::placeholder {
   to { transform: rotate(360deg); }
 }
 
+/* ── File info dentro del drop zone ─────────────── */
+.file-remove-btn {
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: var(--bad);
+  padding: 0.35rem 0.9rem;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 0.6rem;
+  transition: all 0.15s;
+  pointer-events: auto;
+}
+
+.file-remove-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: var(--bad);
+}
+
+#file-name-display {
+  font-weight: 600;
+  font-size: 0.92rem;
+  word-break: break-all;
+}
+
+#file-size-display {
+  font-size: 0.82rem;
+}
+
 /* ── Buttons ────────────────────────────────────── */
 .btn {
   display: inline-flex;

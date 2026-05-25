@@ -40,10 +40,16 @@
           <button class="sample-btn" id="btn-sample">Cargar texto de ejemplo</button>
         </div>
         <div id="drop-zone" class="drop-zone">
-          <div class="drop-content">
+          <div class="drop-content" id="drop-empty">
             <div style="font-size:1.5rem;margin-bottom:.5rem">📄</div>
             <p style="font-weight:500;margin:0 0 .25rem 0">Arrastra archivos aquí</p>
             <p style="font-size:.85rem;color:var(--muted);margin:0">PDF o DOCX</p>
+          </div>
+          <div class="drop-content" id="drop-file-info" style="display:none">
+            <div style="font-size:1.5rem;margin-bottom:.5rem">📎</div>
+            <p style="font-weight:500;margin:0 0 .25rem 0" id="file-name-display"></p>
+            <p style="font-size:.85rem;color:var(--muted);margin:0" id="file-size-display"></p>
+            <button class="file-remove-btn" id="file-remove-btn" type="button">✕ Quitar archivo</button>
           </div>
           <input type="file" id="file-input" accept=".pdf,.docx" style="display:none">
         </div>
@@ -72,12 +78,6 @@
           <button class="sample-btn" id="btn-sample-form" type="button">Cargar formulario de ejemplo</button>
         </div>
         <div class="form-grid">
-
-          <div class="field-wrap">
-            <label class="field-label" for="f-nombre">Nombre <span class="badge">local</span></label>
-            <input class="field-input" id="f-nombre" type="text" placeholder="Ej. María García" data-tipo="nombre">
-            <span class="field-msg" id="msg-nombre"></span>
-          </div>
 
           <div class="field-wrap">
             <label class="field-label" for="f-correo">Correo Electrónico <span class="badge">autómata</span></label>

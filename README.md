@@ -62,13 +62,14 @@ Render leerá `PORT` automáticamente, y `app.py` ya está preparado para usarlo
 
 ## API REST
 
-| Método | Ruta              | Descripción                              |
-|--------|-------------------|------------------------------------------|
-| GET    | `/`               | Sirve la interfaz web                    |
-| GET    | `/api/health`     | Estado del servidor                      |
-| POST   | `/api/validar`    | Valida un campo individual               |
-| POST   | `/api/extraer`    | Extrae patrones de un texto libre        |
-| GET    | `/api/referencia` | Tabla de autómatas (ER + ejemplos)       |
+| Método | Ruta                   | Descripción                                     |
+|--------|------------------------|-------------------------------------------------|
+| GET    | `/`                    | Sirve la interfaz web                           |
+| GET    | `/api/health`          | Estado del servidor                             |
+| POST   | `/api/validar`         | Valida un campo individual                      |
+| POST   | `/api/extraer`         | Extrae patrones de un texto libre               |
+| POST   | `/api/procesar-archivo`| Procesa un archivo PDF/DOCX y extrae patrones   |
+| GET    | `/api/referencia`      | Tabla de autómatas (ER + ejemplos)              |
 
 ### POST /api/validar
 ```json
@@ -94,6 +95,19 @@ Render leerá `PORT` automáticamente, y `app.py` ya está preparado para usarlo
     "fechas": ["15/08/2025"],
     ...
   },
+  "total": 3
+}
+```
+
+### POST /api/procesar-archivo
+```json
+// Request (Form-Data)
+archivo: (file) documento.pdf
+
+// Response
+{
+  "archivo": "documento.pdf",
+  "patrones": { "correos": [...], "telefonos": [...], ... },
   "total": 3
 }
 ```

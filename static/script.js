@@ -104,62 +104,157 @@ En el HTML usamos etiquetas como <div>, </div>, <span> y </span>`;
 document.getElementById('btn-limpiar').addEventListener('click', () => {
   document.getElementById('txt-input').value = '';
   document.getElementById('results-container').innerHTML = '';
+  limpiarArchivo();
 });
 
-document.getElementById('btn-extraer').addEventListener('click', async () => {
-  const texto = document.getElementById('txt-input').value;
-  const container = document.getElementById('results-container');
-  const spinner = document.getElementById('sp-extraer');
+/* ── Variable global para archivo seleccionado ─────────────────────── */
+let selectedFile = null;
 
-  if (!texto.trim()) {
-    showToast('Ingresa texto para analizar', 'err');
+/* ── Render resultados (compartido entre texto y archivo) ─────────── */
+function renderResultados(patrones, container) {
+  const total = Object.values(patrones).reduce((s, arr) => s + arr.length, 0);
+  if (total === 0) {
+    container.innerHTML = '<p class="no-results">No se encontraron patrones reconocibles.</p>';
     return;
   }
 
-  spinner.classList.add('active');
-  container.innerHTML = '';
+  const grid = document.createElement('div');
+  grid.className = 'results-grid';
 
-  try {
-    const data = await API.post('/api/extraer', { texto });
-    const { patrones, total } = data;
+  for (const [clave, items] of Object.entries(patrones)) {
+    const card = document.createElement('div');
+    card.className = 'result-card';
+    card.innerHTML = `
+      <div class="r-type">${LABELS[clave] || clave}</div>
+      <div class="r-count">${items.length} coincidencia(s)</div>
+      <div class="r-items">
+        ${items.length
+          ? items.map(it => `<div class="r-item">${esc(it)}</div>`).join('')
+          : '<div style="font-size:.75rem;color:var(--muted);font-style:italic">Sin coincidencias</div>'}
+      </div>`;
+    grid.appendChild(card);
+  }
+  container.appendChild(grid);
+  return total;
+}
 
-    if (total === 0) {
-      container.innerHTML = '<p class="no-results">No se encontraron patrones reconocibles.</p>';
+/* ── Botón Extraer: texto del textarea O archivo seleccionado ─────── */
+document.getElementById('btn-extraer').addEventListener('click', async () => {
+  const container = document.getElementById('results-container');
+  const spinner = document.getElementById('sp-extraer');
+
+  if (selectedFile) {
+    /* ── Extraer desde archivo ─────────────────────────────────── */
+    spinner.classList.add('active');
+    container.innerHTML = '';
+
+    try {
+      const formData = new FormData();
+      formData.append('archivo', selectedFile);
+
+      const res = await fetch('/api/procesar-archivo', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Error desconocido');
+      }
+
+      const data = await res.json();
+      const { archivo: nombre, patrones } = data;
+      const total = renderResultados(patrones, container);
+      showToast(`${nombre}: ${total} patrón(es) encontrado(s)`, 'ok');
+
+    } catch (err) {
+      showToast(`Error: ${err.message}`, 'err');
+      container.innerHTML = '<p class="no-results">Error al procesar el archivo.</p>';
+    } finally {
+      spinner.classList.remove('active');
+    }
+
+  } else {
+    /* ── Extraer desde texto ───────────────────────────────────── */
+    const texto = document.getElementById('txt-input').value;
+
+    if (!texto.trim()) {
+      showToast('Ingresa texto o selecciona un archivo', 'err');
       return;
     }
 
-    const grid = document.createElement('div');
-    grid.className = 'results-grid';
+    spinner.classList.add('active');
+    container.innerHTML = '';
 
-    for (const [clave, items] of Object.entries(patrones)) {
-      const card = document.createElement('div');
-      card.className = 'result-card';
-      card.innerHTML = `
-        <div class="r-type">${LABELS[clave] || clave}</div>
-        <div class="r-count">${items.length} coincidencia(s)</div>
-        <div class="r-items">
-          ${items.length
-            ? items.map(it => `<div class="r-item">${esc(it)}</div>`).join('')
-            : '<div style="font-size:.75rem;color:var(--muted);font-style:italic">Sin coincidencias</div>'}
-        </div>`;
-      grid.appendChild(card);
+    try {
+      const data = await API.post('/api/extraer', { texto });
+      const { patrones, total } = data;
+      renderResultados(patrones, container);
+      showToast(`${total} patrón(es) encontrado(s)`, 'ok');
+
+    } catch (err) {
+      showToast('Error al conectar con el servidor', 'err');
+      container.innerHTML = '<p class="no-results">Error de conexión con el servidor.</p>';
+    } finally {
+      spinner.classList.remove('active');
     }
-    container.appendChild(grid);
-    showToast(`${total} patrón(es) encontrado(s)`, 'ok');
-
-  } catch (err) {
-    showToast('Error al conectar con el servidor', 'err');
-    container.innerHTML = '<p class="no-results">Error de conexión con el servidor.</p>';
-  } finally {
-    spinner.classList.remove('active');
   }
+});
+
+document.getElementById('btn-limpiar').addEventListener('click', () => {
+  document.getElementById('txt-input').value = '';
+  document.getElementById('results-container').innerHTML = '';
+  limpiarArchivo();
 });
 
 /* ── Drag and Drop para archivos ──────────────────────────────────── */
 const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
 
-dropZone.addEventListener('click', () => fileInput.click());
+function mostrarArchivoEnZona(archivo) {
+  document.getElementById('drop-empty').style.display = 'none';
+  document.getElementById('drop-file-info').style.display = 'block';
+  document.getElementById('file-name-display').textContent = archivo.name;
+  document.getElementById('file-size-display').textContent = formatSize(archivo.size);
+}
+
+function limpiarArchivo() {
+  selectedFile = null;
+  fileInput.value = '';
+  document.getElementById('drop-empty').style.display = 'block';
+  document.getElementById('drop-file-info').style.display = 'none';
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function validarArchivo(archivo) {
+  const ext = archivo.name.split('.').pop().toLowerCase();
+  if (!['pdf', 'docx'].includes(ext)) {
+    showToast('Solo se permiten archivos PDF o DOCX', 'err');
+    return false;
+  }
+  if (archivo.size > 16 * 1024 * 1024) {
+    showToast('El archivo es demasiado grande (máx 16 MB)', 'err');
+    return false;
+  }
+  return true;
+}
+
+function seleccionarArchivo(archivo) {
+  if (!validarArchivo(archivo)) return;
+  selectedFile = archivo;
+  mostrarArchivoEnZona(archivo);
+  showToast(`Archivo listo: ${archivo.name}`, 'ok');
+}
+
+dropZone.addEventListener('click', (e) => {
+  if (e.target.closest('.file-remove-btn')) return;
+  fileInput.click();
+});
 
 ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
   dropZone.addEventListener(evt, e => e.preventDefault());
@@ -170,87 +265,19 @@ dropZone.addEventListener('dragenter', () => dropZone.classList.add('dragover'))
 dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
 dropZone.addEventListener('dragover', () => dropZone.classList.add('dragover'));
 
-async function procesarArchivo(archivo) {
-  const container = document.getElementById('results-container');
-  
-  // Validar tipo de archivo
-  const ext = archivo.name.split('.').pop().toLowerCase();
-  if (!['pdf', 'docx'].includes(ext)) {
-    showToast('Solo se permiten archivos PDF o DOCX', 'err');
-    return;
-  }
-
-  // Validar tamaño (máx 16 MB)
-  if (archivo.size > 16 * 1024 * 1024) {
-    showToast('El archivo es demasiado grande (máx 16 MB)', 'err');
-    return;
-  }
-
-  dropZone.classList.add('loading');
-  container.innerHTML = '';
-
-  try {
-    const formData = new FormData();
-    formData.append('archivo', archivo);
-
-    const res = await fetch('/api/procesar-archivo', {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!res.ok) {
-      const error = await res.json();
-      throw new Error(error.error || 'Error desconocido');
-    }
-
-    const data = await res.json();
-    const { archivo: nombre, patrones, total } = data;
-
-    if (total === 0) {
-      container.innerHTML = '<p class="no-results">No se encontraron patrones en el archivo.</p>';
-      showToast(`${nombre}: sin patrones encontrados`, 'ok');
-      return;
-    }
-
-    const grid = document.createElement('div');
-    grid.className = 'results-grid';
-
-    for (const [clave, items] of Object.entries(patrones)) {
-      const card = document.createElement('div');
-      card.className = 'result-card';
-      card.innerHTML = `
-        <div class="r-type">${LABELS[clave] || clave}</div>
-        <div class="r-count">${items.length} coincidencia(s)</div>
-        <div class="r-items">
-          ${items.length
-            ? items.map(it => `<div class="r-item">${esc(it)}</div>`).join('')
-            : '<div style="font-size:.75rem;color:var(--muted);font-style:italic">Sin coincidencias</div>'}
-        </div>`;
-      grid.appendChild(card);
-    }
-    container.appendChild(grid);
-    showToast(`${nombre}: ${total} patrón(es) encontrado(s)`, 'ok');
-
-  } catch (err) {
-    showToast(`Error: ${err.message}`, 'err');
-    container.innerHTML = '<p class="no-results">Error al procesar el archivo.</p>';
-  } finally {
-    dropZone.classList.remove('loading', 'dragover');
-  }
-}
-
 dropZone.addEventListener('drop', e => {
   dropZone.classList.remove('dragover');
   const files = e.dataTransfer.files;
-  if (files.length > 0) {
-    procesarArchivo(files[0]);
-  }
+  if (files.length > 0) seleccionarArchivo(files[0]);
 });
 
 fileInput.addEventListener('change', e => {
-  if (e.target.files.length > 0) {
-    procesarArchivo(e.target.files[0]);
-  }
+  if (e.target.files.length > 0) seleccionarArchivo(e.target.files[0]);
+});
+
+document.getElementById('file-remove-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  limpiarArchivo();
 });
 
 /* ════════════════════════════════════════════════════════════════════
@@ -258,7 +285,6 @@ fileInput.addEventListener('change', e => {
    ════════════════════════════════════════════════════════════════════ */
 
 const CAMPOS = [
-  { id: 'f-nombre', tipo: 'nombre', msg: 'msg-nombre', pill: 'Nombre' },
   { id: 'f-correo', tipo: 'correo', msg: 'msg-correo', pill: 'Correo' },
   { id: 'f-telefono', tipo: 'telefono', msg: 'msg-telefono', pill: 'Teléfono' },
   { id: 'f-fecha', tipo: 'fecha', msg: 'msg-fecha', pill: 'Fecha' },
@@ -268,13 +294,6 @@ const CAMPOS = [
   { id: 'f-ipv4', tipo: 'ipv4', msg: 'msg-ipv4', pill: 'IPv4' },
   { id: 'f-monto', tipo: 'monto', msg: 'msg-monto', pill: 'Monto' },
 ];
-
-// Para "nombre" hacemos validación local (sin autómata de servidor)
-function validarNombreLocal(valor) {
-  if (!valor) return { valido: false, mensaje: 'Campo vacío' };
-  if (valor.trim().length < 2) return { valido: false, mensaje: 'Mínimo 2 caracteres' };
-  return { valido: true, mensaje: 'Nombre registrado' };
-}
 
 /* Inicializar pills */
 const pillsContainer = document.getElementById('pills-container');
@@ -332,13 +351,7 @@ CAMPOS.forEach(cfg => {
       return;
     }
 
-    // Nombre: validación local
-    if (cfg.tipo === 'nombre') {
-      aplicarResultado(cfg.id, cfg.msg, validarNombreLocal(valor));
-      return;
-    }
-
-    // Resto: llamada al servidor
+    // Llamada al servidor
     try {
       const resultado = await API.post('/api/validar', { tipo: cfg.tipo, valor });
       aplicarResultado(cfg.id, cfg.msg, resultado);
@@ -354,7 +367,6 @@ CAMPOS.forEach(cfg => {
 
 document.getElementById('btn-sample-form').addEventListener('click', () => {
   const ejemplos = {
-    'f-nombre': 'María García López',
     'f-correo': 'maria.garcia@uniquindio.edu.co',
     'f-telefono': '310-1234567',
     'f-fecha': '25/12/2024',
