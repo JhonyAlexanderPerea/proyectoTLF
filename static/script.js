@@ -115,7 +115,7 @@ function renderResultados(patrones, container) {
   const total = Object.values(patrones).reduce((s, arr) => s + arr.length, 0);
   if (total === 0) {
     container.innerHTML = '<p class="no-results">No se encontraron patrones reconocibles.</p>';
-    return;
+    return total;
   }
 
   const grid = document.createElement('div');
@@ -163,13 +163,21 @@ document.getElementById('btn-extraer').addEventListener('click', async () => {
       }
 
       const data = await res.json();
-      const { archivo: nombre, patrones } = data;
+      const nombre = data.archivo || 'Archivo';
+      const patrones = data.patrones || {};
       const total = renderResultados(patrones, container);
-      showToast(`${nombre}: ${total} patrón(es) encontrado(s)`, 'ok');
+      if (total > 0) {
+        showToast(`${nombre}: ${total} patrón(es) encontrado(s)`, 'ok');
+      } else {
+        showToast(`${nombre}: sin patrones encontrados`, 'ok');
+      }
+
+      limpiarArchivo();
 
     } catch (err) {
-      showToast(`Error: ${err.message}`, 'err');
-      container.innerHTML = '<p class="no-results">Error al procesar el archivo.</p>';
+      const msg = err.message || 'Error inesperado al procesar el archivo';
+      showToast(`Error: ${msg}`, 'err');
+      container.innerHTML = `<p class="no-results">Error: ${esc(msg)}</p>`;
     } finally {
       spinner.classList.remove('active');
     }
@@ -188,13 +196,18 @@ document.getElementById('btn-extraer').addEventListener('click', async () => {
 
     try {
       const data = await API.post('/api/extraer', { texto });
-      const { patrones, total } = data;
-      renderResultados(patrones, container);
-      showToast(`${total} patrón(es) encontrado(s)`, 'ok');
+      const patrones = data.patrones || {};
+      const total = renderResultados(patrones, container);
+      if (total > 0) {
+        showToast(`${total} patrón(es) encontrado(s)`, 'ok');
+      } else {
+        showToast('Texto analizado — sin patrones encontrados', 'ok');
+      }
 
     } catch (err) {
-      showToast('Error al conectar con el servidor', 'err');
-      container.innerHTML = '<p class="no-results">Error de conexión con el servidor.</p>';
+      const msg = err.message || 'Error inesperado';
+      showToast(`Error: ${msg}`, 'err');
+      container.innerHTML = `<p class="no-results">Error de conexión: ${esc(msg)}</p>`;
     } finally {
       spinner.classList.remove('active');
     }
